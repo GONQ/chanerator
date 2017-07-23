@@ -1,0 +1,30 @@
+chanerator v0 (license)
+
+
+    ┏┓                      ┏┓
+    ┃┃                     ┏┛┗┓
+┏━━┓┃┗━┓┏━━┓┏━┓ ┏━━┓┏━┓┏━━┓┗┓┏┛┏━━┓┏━┓
+┃┏━┛┃┏┓┃┃┏┓┃┃┏┓┓┃┃━┫┃┏┛┃┏┓┃ ┃┃ ┃┏┓┃┃┏┛
+┃┗━┓┃┃┃┃┃┏┓┃┃┃┃┃┃┃━┫┃┃ ┃┏┓┃ ┃┗┓┃┗┛┃┃┃
+┗━━┛┗┛┗┛┗┛┗┛┗┛┗┛┗━━┛┗┛ ┗┛┗┛ ┗━┛┗━━┛┗┛
+
+contact / broadcast: (3X0R) < BM-NBTqJ12baBSKxqdnQedyhFVUWborkho3 >
+
+The chanerator generates a bitmessage stream 1 chan address on the command line.
+
+A bash alias to the script makes it useful for fast testing.
+
+Modeled from Bitmessage VanityGen (by 'nimda') and a later version, 'bmgen.py.'
+https://bitmessage.org/forum/index.php?topic=1727.0
+https://gist.github.com/anonymous/43c7d9690e57558b10e59720b29dc2d6
+
+Usage: $ python2 chanerator.py [passphrase]
+
+Use is subject to license and indemnification of the author(s) from all claims.
+
+LICENSE AGREEMENT:
+
+By using this software you agree to hold the author harmless. This software is
+provided with no warranty. It is not warranted to have fitness for any purpose.
+User agrees that any usage is absolutely at user's own risk with no recourse.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
