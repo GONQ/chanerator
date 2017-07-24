@@ -52,8 +52,8 @@ import sys, os, base64, hashlib, time
 from struct import Struct
 from pyelliptic.openssl import OpenSSL
 import ctypes
-from pyelliptic import arithmetic
 from binascii import hexlify
+from collections import deque
 from hashlib import sha256, sha512
 
 
@@ -90,22 +90,21 @@ def encodeAddress(version, stream, ripe):
     address_data = encodeVarint(version) + encodeVarint(stream) + ripe
     address_data += sha512(sha512(address_data).digest()).digest()[:4]
 
-    asInt = int(hexlify(address_data), 16)
-    return 'BM-'+ encodeBase58(asInt)
+    return 'BM-'+ encodeBase58(address_data)
 
 ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
-def encodeBase58(num, alphabet=ALPHABET):
-   
-    if (num == 0):
+def encodeBase58(data, alphabet=ALPHABET):
+    if not data:
+        return ''
+    num = int(hexlify(data), 16)
+    if not num:
         return alphabet[0]
-    arr = []
+    arr = deque()
     base = len(alphabet)
     while num:
-        rem = num % base
-        num = num // base
-        arr.append(alphabet[rem])
-    arr.reverse()
+        num, rem = divmod(num, base)
+        arr.appendleft(alphabet[rem])
     return ''.join(arr)
 
 def pointMult(secret):
@@ -162,13 +161,11 @@ def chanerate():
 
             privSigningKey = '\x80' + potentialPrivSigningKey
             checksum = sha256(sha256(privSigningKey).digest()).digest()[0:4]
-            privSigningKeyWIF = arithmetic.changebase(
-                privSigningKey + checksum, 256, 58)
+            privSigningKeyWIF = encodeBase58(privSigningKey + checksum)
 
             privEncryptionKey = '\x80' + potentialPrivEncryptionKey
             checksum = sha256(sha256(privEncryptionKey).digest()).digest()[0:4]
-            privEncryptionKeyWIF = arithmetic.changebase(
-                privEncryptionKey + checksum, 256, 58)
+            privEncryptionKeyWIF = encodeBase58(privEncryptionKey + checksum)
 
             deterministicNonce += 1
             if (address[:2] == "BM"):
