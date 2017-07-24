@@ -48,13 +48,15 @@ User agrees that any usage is absolutely at user's own risk with no recourse.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 '''
 
-import sys, os, base64, hashlib, time
+import sys, os, base64, hashlib
 from struct import Struct
 import ctypes
 import ctypes.util
 from binascii import hexlify
 from collections import deque
+from datetime import timedelta
 from hashlib import sha256, sha512
+from timeit import default_timer as timer
 
 
 POINT_COMPRESSION_UNCOMPRESSED = 4
@@ -177,68 +179,66 @@ def encodeBase58(data, alphabet=ALPHABET):
         arr.appendleft(alphabet[rem])
     return ''.join(arr)
 
-found_one = False
+def wiflify(key):
+    data = '\x80' + key
+    data += sha256(sha256(data).digest()).digest()[:4]
+    return encodeBase58(data)
 
-def chanerate():
-    global found_one
-    passphrase = args[0]
-    deterministicNonce = 0
-    startTime = time.time()
-    while found_one != True:
-        
-        deterministicNall = str(passphrase)
-        address=""
-        while found_one != True:
-            
-            signingKeyNonce = 0
-            encryptionKeyNonce = 1
-            numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix = 0
-            deterministicPassphrase = deterministicNall
-            while found_one != True:
-                numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix += 1
-                potentialPrivSigningKey = sha512(deterministicPassphrase + encodeVarint(signingKeyNonce)).digest()[:32]
-                potentialPrivEncryptionKey = sha512(deterministicPassphrase + encodeVarint(encryptionKeyNonce)).digest()[:32]
-                potentialPubSigningKey = OpenSSL.get_public_key(potentialPrivSigningKey)
-                potentialPubEncryptionKey = OpenSSL.get_public_key(potentialPrivEncryptionKey)
-                signingKeyNonce += 2
-                encryptionKeyNonce += 2
-                ripe = hashlib.new('ripemd160', sha512(potentialPubSigningKey + potentialPubEncryptionKey).digest()).digest()
-                
-                if ripe[:1] == '\x00':
-                        break
-                
-
-            address = encodeAddress(4,1,ripe)
-
-            privSigningKey = '\x80' + potentialPrivSigningKey
-            checksum = sha256(sha256(privSigningKey).digest()).digest()[0:4]
-            privSigningKeyWIF = encodeBase58(privSigningKey + checksum)
-
-            privEncryptionKey = '\x80' + potentialPrivEncryptionKey
-            checksum = sha256(sha256(privEncryptionKey).digest()).digest()[0:4]
-            privEncryptionKeyWIF = encodeBase58(privEncryptionKey + checksum)
-
-            deterministicNonce += 1
-            if (address[:2] == "BM"):
-                print "[" + address+ "]"
-                print "label = [chan] " + str(deterministicPassphrase)
-                print "enabled = true"
-                print "decoy = false"
-                print "chan = true"
-                print "noncetrialsperbyte = 1000"
-                print "payloadlengthextrabytes = 1000"
-                print "privsigningkey = " + privSigningKeyWIF
-                print "privencryptionkey = " + privEncryptionKeyWIF
-                found_one = True
-                
+def chanerate(passphrases):
+    startTime = timer()
+    iterations = 0
+    for passphrase in passphrases:
+        while True:
+            nonce = 0
+            try:
+                while True:
+                    iterations += 1
+                    privSigningKey = sha512(passphrase + encodeVarint(nonce)).digest()[:32]
+                    privEncryptionKey = sha512(passphrase + encodeVarint(nonce + 1)).digest()[:32]
+                    pubSigningKey = OpenSSL.get_public_key(privSigningKey)
+                    pubEncryptionKey = OpenSSL.get_public_key(privEncryptionKey)
+                    ripe = hashlib.new('ripemd160', sha512(pubSigningKey + pubEncryptionKey).digest()).digest()
+                    if ripe[:1] == '\x00':
+                        try:
+                            address = encodeAddress(4, 1, ripe)
+                            break
+                        except ValueError:
+                            # most likely to be too many leading NULs
+                            # continue with the next iteration
+                            pass
+                    nonce += 2
+            except ValueError:
+                print 'Exhausted all nonces trying to find an address for passphrase ' + passphrase
                 break
 
-        if (found_one == True):
+            print "[" + address + "]"
+            print "label = [chan] " + passphrase
+            print "enabled = true"
+            print "decoy = false"
+            print "chan = true"
+            print "noncetrialsperbyte = 1000"
+            print "payloadlengthextrabytes = 1000"
+            print "privsigningkey = " + wiflify(privSigningKey)
+            print "privencryptionkey = " + wiflify(privEncryptionKey)
+            print
             break
+    stopTime = timer()
+    duration = stopTime - startTime
+    if not options.stats:
+        return
+    print 'Duration:', timedelta(seconds=duration)
+    print 'Avg time per address:', timedelta(seconds=duration / len(passphrases))
+    print 'Iterations per second:', iterations / duration
+    print 'Avg iterations per address:', iterations / len(passphrases)
+
 
 from optparse import OptionParser
-usage = "usage: %prog [options] passphrase"
+usage = "usage: %prog [options] passphrases"
 parser = OptionParser(usage=usage)
+
+parser.add_option("-s", "--stats",
+                  action="store_true", dest="stats", default=False,
+                  help="Show stats when complete")
 
 parser.add_option("-i", "--info",
                   action="store_true", dest="info", default=False,
@@ -306,4 +306,4 @@ if len(args) == 0:
     sys.exit()
     
 OpenSSL = _OpenSSL(options.library)
-chanerate()
+chanerate(args)
