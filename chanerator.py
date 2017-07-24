@@ -49,29 +49,28 @@ User agrees that any usage is absolutely at user's own risk with no recourse.
 '''
 
 import sys, os, base64, hashlib, time
-from struct import *
+from struct import Struct
 from pyelliptic.openssl import OpenSSL
 import ctypes
 from pyelliptic import arithmetic
 from binascii import hexlify
 
 
+pack_B = Struct('>B').pack
+pack_BH = Struct('>BH').pack
+pack_BI = Struct('>BI').pack
+pack_BQ = Struct('>BQ').pack
 def encodeVarint(integer):
-    if integer < 0:
-        print 'varint cannot be < 0'
-        raise SystemExit
+    if not (0 <= integer < 18446744073709551616):
+        raise ValueError('varint must be >= 0 and < 2**64')
     if integer < 253:
-        return pack('>B',integer)
-    if integer >= 253 and integer < 65536:
-        return pack('>B',253) + pack('>H',integer)
-    if integer >= 65536 and integer < 4294967296:
-        return pack('>B',254) + pack('>I',integer)
-    if integer >= 4294967296 and integer < 18446744073709551616:
-        return pack('>B',255) + pack('>Q',integer)
-    if integer >= 18446744073709551616:
-        print 'varint cannot be >= 18446744073709551616'
-        raise SystemExit
-    
+        return pack_B(integer)
+    if integer < 65536:
+        return pack_BH(253, integer)
+    if integer < 4294967296:
+        return pack_BI(254, integer)
+    return pack_BQ(255, integer)
+
 def encodeAddress(version,stream,ripe):
     if version >= 2 and version < 4:
         if len(ripe) != 20:
