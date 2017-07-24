@@ -72,26 +72,25 @@ def encodeVarint(integer):
         return pack_BI(254, integer)
     return pack_BQ(255, integer)
 
-def encodeAddress(version,stream,ripe):
-    if version >= 2 and version < 4:
-        if len(ripe) != 20:
-            raise Exception("Programming error in encodeAddress: The length of a given ripe hash was not 20.")
+def encodeAddress(version, stream, ripe):
+    if len(ripe) != 20:
+        raise ValueError('ripe must be exactly 20 bytes')
+    if 2 <= version < 4:
         if ripe[:2] == '\x00\x00':
             ripe = ripe[2:]
         elif ripe[:1] == '\x00':
             ripe = ripe[1:]
     elif version == 4:
-        if len(ripe) != 20:
-            raise Exception("Programming error in encodeAddress: The length of a given ripe hash was not 20.")
         ripe = ripe.lstrip('\x00')
+        if len(ripe) < 4:
+            raise ValueError('ripe must not contain more than 16 leading NUL bytes')
+    else:
+        raise ValueError('address version %s not supported' % version)
 
-    verVar = encodeVarint(version)
-    strVar = encodeVarint(stream)
-    storedBinaryData = encodeVarint(version) + encodeVarint(stream) + ripe
+    address_data = encodeVarint(version) + encodeVarint(stream) + ripe
+    address_data += sha512(sha512(address_data).digest()).digest()[:4]
 
-    checksum = sha512(sha512(storedBinaryData).digest()).digest()[0:4]
-
-    asInt = int(hexlify(storedBinaryData) + hexlify(checksum),16)
+    asInt = int(hexlify(address_data), 16)
     return 'BM-'+ encodeBase58(asInt)
 
 ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
