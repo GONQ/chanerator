@@ -50,12 +50,82 @@ User agrees that any usage is absolutely at user's own risk with no recourse.
 
 import sys, os, base64, hashlib, time
 from struct import Struct
-from pyelliptic.openssl import OpenSSL
 import ctypes
+import ctypes.util
 from binascii import hexlify
 from collections import deque
 from hashlib import sha256, sha512
 
+
+POINT_COMPRESSION_UNCOMPRESSED = 4
+
+class _OpenSSL:
+    '''Wrapper for OpenSSL using ctypes'''
+    def __init__(self, library):
+        if not library:
+            library = 'libeay32.dll' if sys.platform == 'win32' else 'crypto'
+            library = ctypes.util.find_library(library)
+        self._lib = ctypes.CDLL(library)
+
+        self._wrap('BN_bin2bn', ctypes.c_void_p, [ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p])
+        self._wrap('BN_clear_free', None, [ctypes.c_void_p])
+        self._wrap('BN_new', ctypes.c_void_p, [])
+
+        self._wrap('BN_CTX_free', None, [ctypes.c_void_p])
+        self._wrap('BN_CTX_new', ctypes.c_void_p, [])
+
+        self._wrap('EC_GROUP_clear_free', None, [ctypes.c_void_p])
+        self._wrap('EC_GROUP_new_by_curve_name', ctypes.c_void_p, [ctypes.c_int])
+
+        self._wrap('EC_POINT_clear_free', None, [ctypes.c_void_p])
+        self._wrap('EC_POINT_new', ctypes.c_void_p, [ctypes.c_void_p])
+        self._wrap('EC_POINT_point2oct', ctypes.c_size_t, [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_char), ctypes.c_size_t, ctypes.c_void_p])
+        self._wrap('EC_POINTs_mul', ctypes.c_int, [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p])
+
+        self._wrap('OBJ_sn2nid', ctypes.c_int, [ctypes.c_char_p])
+
+        NID_secp256k1 = self.OBJ_sn2nid('secp256k1')
+        if not NID_secp256k1:
+            raise Exception('OpenSSL library missing NID_secp256k1')
+
+        group = self.EC_GROUP_new_by_curve_name(NID_secp256k1)
+        if not group:
+            raise Exception('OpenSSL library missing elliptic curve secp256k1')
+        self.group = group
+
+        self.bn_ctx = self.BN_CTX_new()
+        self.bn_private_key = self.BN_new()
+        self.point_public_key = self.EC_POINT_new(group)
+        self.buf = ctypes.create_string_buffer(65)
+
+    def __del__(self):
+        if getattr(self, 'point_public_key', 0):
+            self.EC_POINT_clear_free(self.point_public_key)
+        if getattr(self, 'bn_private_key', 0):
+            self.BN_clear_free(self.bn_private_key)
+        if getattr(self, 'bn_ctx', 0):
+            self.BN_CTX_free(self.bn_ctx)
+        if getattr(self, 'group', 0):
+            self.EC_GROUP_clear_free(self.group)
+
+    def _wrap(self, name, restype=None, argtypes=[]):
+        if not hasattr(self._lib, name):
+            raise Exception('OpenSSL library missing %s function' % name)
+        f = getattr(self._lib, name)
+        f.restype = restype
+        f.argtypes = argtypes
+        setattr(self, name, f)
+    
+    def get_public_key(self, raw_private_key):
+        bn_private_key = self.bn_private_key
+        bn_ctx = self.bn_ctx
+        point_public_key = self.point_public_key
+        group = self.group
+        buf = self.buf
+        self.BN_bin2bn(raw_private_key, 32, bn_private_key)
+        self.EC_POINTs_mul(group, point_public_key, bn_private_key, 0, None, None, bn_ctx)
+        self.EC_POINT_point2oct(group, point_public_key, POINT_COMPRESSION_UNCOMPRESSED, buf, len(buf), bn_ctx)
+        return buf.raw
 
 pack_B = Struct('>B').pack
 pack_BH = Struct('>BH').pack
@@ -107,25 +177,6 @@ def encodeBase58(data, alphabet=ALPHABET):
         arr.appendleft(alphabet[rem])
     return ''.join(arr)
 
-def pointMult(secret):
-    k = OpenSSL.EC_KEY_new_by_curve_name(OpenSSL.get_curve('secp256k1')) 
-    priv_key = OpenSSL.BN_bin2bn(secret, 32, 0)
-    group = OpenSSL.EC_KEY_get0_group(k)
-    pub_key = OpenSSL.EC_POINT_new(group)
-
-    OpenSSL.EC_POINT_mul(group, pub_key, priv_key, None, None, None)
-    OpenSSL.EC_KEY_set_private_key(k, priv_key)
-    OpenSSL.EC_KEY_set_public_key(k, pub_key)
-    
-    size = OpenSSL.i2o_ECPublicKey(k, 0)
-    mb = ctypes.create_string_buffer(size)
-    OpenSSL.i2o_ECPublicKey(k, ctypes.byref(ctypes.pointer(mb)))
-    
-    OpenSSL.EC_POINT_free(pub_key)
-    OpenSSL.BN_free(priv_key)
-    OpenSSL.EC_KEY_free(k)
-    return mb.raw
-
 found_one = False
 
 def chanerate():
@@ -147,8 +198,8 @@ def chanerate():
                 numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix += 1
                 potentialPrivSigningKey = sha512(deterministicPassphrase + encodeVarint(signingKeyNonce)).digest()[:32]
                 potentialPrivEncryptionKey = sha512(deterministicPassphrase + encodeVarint(encryptionKeyNonce)).digest()[:32]
-                potentialPubSigningKey = pointMult(potentialPrivSigningKey)
-                potentialPubEncryptionKey = pointMult(potentialPrivEncryptionKey)
+                potentialPubSigningKey = OpenSSL.get_public_key(potentialPrivSigningKey)
+                potentialPubEncryptionKey = OpenSSL.get_public_key(potentialPrivEncryptionKey)
                 signingKeyNonce += 2
                 encryptionKeyNonce += 2
                 ripe = hashlib.new('ripemd160', sha512(potentialPubSigningKey + potentialPubEncryptionKey).digest()).digest()
@@ -196,6 +247,9 @@ parser.add_option("-i", "--info",
 parser.add_option("-l", "--logo",
                   action="store_true", dest="logo", default=False,
                   help="Show logo and contact info.")
+
+parser.add_option("--openssl", dest="library",
+                  help="Path of OpenSSL library to use")
 
 (options, args) = parser.parse_args()
 
@@ -251,4 +305,5 @@ if len(args) == 0:
     parser.print_help()
     sys.exit()
     
+OpenSSL = _OpenSSL(options.library)
 chanerate()
