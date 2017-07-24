@@ -54,6 +54,7 @@ from pyelliptic.openssl import OpenSSL
 import ctypes
 from pyelliptic import arithmetic
 from binascii import hexlify
+from hashlib import sha256, sha512
 
 
 pack_B = Struct('>B').pack
@@ -87,14 +88,8 @@ def encodeAddress(version,stream,ripe):
     verVar = encodeVarint(version)
     strVar = encodeVarint(stream)
     storedBinaryData = encodeVarint(version) + encodeVarint(stream) + ripe
-    
 
-    sha = hashlib.new('sha512')
-    sha.update(storedBinaryData)
-    currentHash = sha.digest()
-    sha = hashlib.new('sha512')
-    sha.update(currentHash)
-    checksum = sha.digest()[0:4]
+    checksum = sha512(sha512(storedBinaryData).digest()).digest()[0:4]
 
     asInt = int(hexlify(storedBinaryData) + hexlify(checksum),16)
     return 'BM-'+ encodeBase58(asInt)
@@ -152,32 +147,27 @@ def chanerate():
             deterministicPassphrase = deterministicNall
             while found_one != True:
                 numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix += 1
-                potentialPrivSigningKey = hashlib.sha512(deterministicPassphrase + encodeVarint(signingKeyNonce)).digest()[:32]
-                potentialPrivEncryptionKey = hashlib.sha512(deterministicPassphrase + encodeVarint(encryptionKeyNonce)).digest()[:32]
+                potentialPrivSigningKey = sha512(deterministicPassphrase + encodeVarint(signingKeyNonce)).digest()[:32]
+                potentialPrivEncryptionKey = sha512(deterministicPassphrase + encodeVarint(encryptionKeyNonce)).digest()[:32]
                 potentialPubSigningKey = pointMult(potentialPrivSigningKey)
                 potentialPubEncryptionKey = pointMult(potentialPrivEncryptionKey)
                 signingKeyNonce += 2
                 encryptionKeyNonce += 2
-                ripe = hashlib.new('ripemd160')
-                sha = hashlib.new('sha512')
-                sha.update(potentialPubSigningKey+potentialPubEncryptionKey)
-                ripe.update(sha.digest())
+                ripe = hashlib.new('ripemd160', sha512(potentialPubSigningKey + potentialPubEncryptionKey).digest()).digest()
                 
-                if ripe.digest()[:1] == '\x00':
+                if ripe[:1] == '\x00':
                         break
                 
 
-            address = encodeAddress(4,1,ripe.digest())
+            address = encodeAddress(4,1,ripe)
 
             privSigningKey = '\x80' + potentialPrivSigningKey
-            checksum = hashlib.sha256(hashlib.sha256(
-                privSigningKey).digest()).digest()[0:4]
+            checksum = sha256(sha256(privSigningKey).digest()).digest()[0:4]
             privSigningKeyWIF = arithmetic.changebase(
                 privSigningKey + checksum, 256, 58)
 
             privEncryptionKey = '\x80' + potentialPrivEncryptionKey
-            checksum = hashlib.sha256(hashlib.sha256(
-                privEncryptionKey).digest()).digest()[0:4]
+            checksum = sha256(sha256(privEncryptionKey).digest()).digest()[0:4]
             privEncryptionKeyWIF = arithmetic.changebase(
                 privEncryptionKey + checksum, 256, 58)
 
