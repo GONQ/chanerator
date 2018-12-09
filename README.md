@@ -48,7 +48,7 @@ then usage would be: $ chan *passphrase*
     privsigningkey = 5KXZprdQiFCtB3B8XE1n95BydrrZQ1gEN4VQMkoZRNxszxG7gek
     privencryptionkey = 5JDEp25pdi5xRC9UnzNhdatkHSQHxn7McJqubcXTvTosr8hpFJq
     
--   with chanerator added to path:
+    with chanerator added to path:
     
     $ chan hello
 	[BM-2cWhA72reAp1CBa8JmspqWRCdw93sDLgiS]
@@ -61,7 +61,7 @@ then usage would be: $ chan *passphrase*
 	privsigningkey = 5Kj4516zcKRQuzn8g5N4Pha7BGN9YtQVosAATxmQt1mpD1JUsZE
 	privencryptionkey = 5KE5Jzhv8geP4KJahkEBsuL5sSQsH7Fe1eDpui2FNWitYBrBkEC
 
--   with multiple names:
+    with multiple names:
 
     ./chanerator.py beef "steak dinner"
     
