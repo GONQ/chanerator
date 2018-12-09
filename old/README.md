@@ -1,0 +1,1 @@
+These old files are defunct. The new license documents in parent folder apply.

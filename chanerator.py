@@ -39,12 +39,6 @@ Usage: $ python2 chanerator.py [passphrase]
 
 Use is subject to license and indemnification of the author(s) from all claims.
 
-LICENSE AGREEMENT:
-
-By using this software you agree to hold the author harmless. This software is
-provided with no warranty. It is not warranted to have fitness for any purpose.
-User agrees that any usage is absolutely at user's own risk with no recourse.
-
 In addition to this indemnity agreement and the SSSS license you may choose from
 one of the several free software licenses included with this distribution.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,7 +59,9 @@ POINT_COMPRESSION_UNCOMPRESSED = 4
 
 class _OpenSSL:
     '''Wrapper for OpenSSL using ctypes'''
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     def __init__(self, library):
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if not library:
             library = 'libeay32.dll' if sys.platform == 'win32' else 'crypto'
             library = ctypes.util.find_library(library)
@@ -89,10 +85,12 @@ class _OpenSSL:
         self._wrap('OBJ_sn2nid', ctypes.c_int, [ctypes.c_char_p])
 
         NID_secp256k1 = self.OBJ_sn2nid('secp256k1')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if not NID_secp256k1:
             raise Exception('OpenSSL library missing NID_secp256k1')
 
         group = self.EC_GROUP_new_by_curve_name(NID_secp256k1)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if not group:
             raise Exception('OpenSSL library missing elliptic curve secp256k1')
         self.group = group
@@ -102,17 +100,24 @@ class _OpenSSL:
         self.point_public_key = self.EC_POINT_new(group)
         self.buf = ctypes.create_string_buffer(65)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     def __del__(self):
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if getattr(self, 'point_public_key', 0):
             self.EC_POINT_clear_free(self.point_public_key)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if getattr(self, 'bn_private_key', 0):
             self.BN_clear_free(self.bn_private_key)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if getattr(self, 'bn_ctx', 0):
             self.BN_CTX_free(self.bn_ctx)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if getattr(self, 'group', 0):
             self.EC_GROUP_clear_free(self.group)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     def _wrap(self, name, restype=None, argtypes=[]):
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if not hasattr(self._lib, name):
             raise Exception('OpenSSL library missing %s function' % name)
         f = getattr(self._lib, name)
@@ -120,6 +125,7 @@ class _OpenSSL:
         f.argtypes = argtypes
         setattr(self, name, f)
     
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     def get_public_key(self, raw_private_key):
         bn_private_key = self.bn_private_key
         bn_ctx = self.bn_ctx
@@ -135,27 +141,39 @@ pack_B = Struct('>B').pack
 pack_BH = Struct('>BH').pack
 pack_BI = Struct('>BI').pack
 pack_BQ = Struct('>BQ').pack
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 def encodeVarint(integer):
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if not (0 <= integer < 18446744073709551616):
         raise ValueError('varint must be >= 0 and < 2**64')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if integer < 253:
         return pack_B(integer)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if integer < 65536:
         return pack_BH(253, integer)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if integer < 4294967296:
         return pack_BI(254, integer)
     return pack_BQ(255, integer)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 def encodeAddress(version, stream, ripe):
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if len(ripe) != 20:
         raise ValueError('ripe must be exactly 20 bytes')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if 2 <= version < 4:
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if ripe[:2] == '\x00\x00':
             ripe = ripe[2:]
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         elif ripe[:1] == '\x00':
             ripe = ripe[1:]
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     elif version == 4:
         ripe = ripe.lstrip('\x00')
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if len(ripe) < 4:
             raise ValueError('ripe must not contain more than 16 leading NUL bytes')
     else:
@@ -168,10 +186,13 @@ def encodeAddress(version, stream, ripe):
 
 ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 def encodeBase58(data, alphabet=ALPHABET):
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if not data:
         return ''
     num = int(hexlify(data), 16)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if not num:
         return alphabet[0]
     arr = deque()
@@ -181,14 +202,17 @@ def encodeBase58(data, alphabet=ALPHABET):
         arr.appendleft(alphabet[rem])
     return ''.join(arr)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 def wiflify(key):
     data = '\x80' + key
     data += sha256(sha256(data).digest()).digest()[:4]
     return encodeBase58(data)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 def chanerate(passphrases):
     startTime = timer()
     iterations = 0
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     for passphrase in passphrases:
         while True:
             nonce = 0
@@ -200,6 +224,7 @@ def chanerate(passphrases):
                     pubSigningKey = OpenSSL.get_public_key(privSigningKey)
                     pubEncryptionKey = OpenSSL.get_public_key(privEncryptionKey)
                     ripe = hashlib.new('ripemd160', sha512(pubSigningKey + pubEncryptionKey).digest()).digest()
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
                     if ripe[:1] == '\x00':
                         try:
                             address = encodeAddress(4, 1, ripe)
@@ -226,6 +251,7 @@ def chanerate(passphrases):
             break
     stopTime = timer()
     duration = stopTime - startTime
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if not options.stats:
         return
     print 'Duration:', timedelta(seconds=duration)
@@ -255,6 +281,7 @@ parser.add_option("--openssl", dest="library",
 
 (options, args) = parser.parse_args()
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 if options.info:
     print """
 ╋╋╋╋┏┓╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋┏┓
@@ -264,8 +291,6 @@ if options.info:
 ┃┗━┓┃┃┃┃┃┏┓┃┃┃┃┃┃┃━┫┃┃╋┃┏┓┃╋┃┗┓┃┗┛┃┃┃
 ┗━━┛┗┛┗┛┗┛┗┛┗┛┗┛┗━━┛┗┛╋┗┛┗┛╋┗━┛┗━━┛┗┛
     """
-    print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    print ""
     print "chanerator v0.0.1"
     print ""
     print "Use subject to license."
@@ -276,22 +301,13 @@ if options.info:
     print ""
     print "A bash alias to the script makes it useful for fast testing."
     print ""
-    print "Adapted from Bitmessage VanityGen (by 'nimda') and a later version, bmgen.py."
-    print "https://bitmessage.org/forum/index.php?topic=1727.0"
-    print "https://gist.github.com/anonymous/43c7d9690e57558b10e59720b29dc2d6"
-    print ""
     print "Usage: $ python2 chanerator.py [passphrase]"
     print ""
     print "use -h flag for options."
-    print ""
-    print "LICENSE AGREEMENT:"
-    print "By using this software you agree to hold the author harmless. This software is"
-    print "provided with no warranty. It is not warranted to have fitness for any purpose."
-    print "User agrees that any usage is absolutely at user's own risk with no recourse."
-    print ""
-    print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+
     sys.exit()
     
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 if options.logo:
     shield = """
 
@@ -304,9 +320,11 @@ if options.logo:
     print shield
     sys.exit()
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 if len(args) == 0:
     parser.print_help()
     sys.exit()
     
 OpenSSL = _OpenSSL(options.library)
 chanerate(args)
+
