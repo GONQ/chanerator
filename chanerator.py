@@ -1,22 +1,21 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
-'''
-# ϶ 𝕩 𝕠 я н ᴧ 𝕤 н ϶ 𝕩 𝕠
-#                   я
-#    ┏┓┏┓┏━━┓┏━┓    н
-#    ┗╋╋┛┃┏┓┃┃┏┛    ᴧ
-#    ┏╋╋┓┃┗┛┃┃┃     𝕤     
-#    ┗┛┗┛┗━━┛┗┛     н    (𝕓𝕚𝕥𝕞𝕖𝕤𝕤𝕒𝕘𝕖) < BM-NBTqJ12baBSKxqdnQedyhFVUWborkho3 >
-#                   𝕤                   (𝕖𝕞𝕒𝕚𝕝) < xor@danwin1210.me >
-#     ϶𝕩𝕠я нᴧ𝕤н     ᴧ
-#      𝕔𝕠𝕞𝕤𝕖𝕔             н
-#                   я                    Ⓒ 2017, 𝗘𝗫𝗢𝗥  𝗛𝗔𝗦𝗛  𝗖𝗢𝗠𝗦𝗘𝗖
-# ϶ 𝕩 𝕠 я н ᴧ 𝕤 н ϶ 𝕩 𝕠 
 
+'''
+
+    ┏┓┏┓┏━━┓┏━┓
+    ┗╋╋┛┃┏┓┃┃┏┛         (bitmessage) < BM-5oQUrQbR4xu2rnBFGM2A6BLkJMfYvsw >
+    ┏╋╋┓┃┗┛┃┃┃          (email robot) < auto@eagle.icu >
+    ┗┛┗┛┗━━┛┗┛          { exor hash comsec }
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-chanerator v0
+(c) 2017-2018, Ber Saxon (GONQ) <auto@eagle.icu> https://eagle.icu
+
+This copyright notice must be retained intact and included with any fork or
+distribution of this software. Use subject to license included herewith.
+
+chanerator v0.0.1
 
 
     ┏┓                      ┏┓
@@ -26,13 +25,13 @@ chanerator v0
 ┃┗━┓┃┃┃┃┃┏┓┃┃┃┃┃┃┃━┫┃┃ ┃┏┓┃ ┃┗┓┃┗┛┃┃┃
 ┗━━┛┗┛┗┛┗┛┗┛┗┛┗┛┗━━┛┗┛ ┗┛┗┛ ┗━┛┗━━┛┗┛
 
-contact / broadcast: (3X0R) < BM-NBTqJ12baBSKxqdnQedyhFVUWborkho3 >
-
 The chanerator generates a bitmessage stream 1 chan address on the command line.
 
 A bash alias to the script makes it useful for fast testing.
 
 Modeled from Bitmessage VanityGen (by 'nimda') and a later version, 'bmgen.py.'
+Updated with many improvements by GitHub user @bmng-dev.
+
 https://bitmessage.org/forum/index.php?topic=1727.0
 https://gist.github.com/anonymous/43c7d9690e57558b10e59720b29dc2d6
 
@@ -45,6 +44,9 @@ LICENSE AGREEMENT:
 By using this software you agree to hold the author harmless. This software is
 provided with no warranty. It is not warranted to have fitness for any purpose.
 User agrees that any usage is absolutely at user's own risk with no recourse.
+
+In addition to this indemnity agreement and the SSSS license you may choose from
+one of the several free software licenses included with this distribution.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 '''
 
@@ -264,11 +266,11 @@ if options.info:
     """
     print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     print ""
-    print "chanerator v0"
+    print "chanerator v0.0.1"
     print ""
     print "Use subject to license."
     print ""
-    print "contact / broadcast: (chanerator) < BM-NBTqJ12baBSKxqdnQedyhFVUWborkho3 >"
+    print "contact / broadcast: (GONQ) < BM-5oQUrQbR4xu2rnBFGM2A6BLkJMfYvsw >"
     print ""
     print "Generates a bitmessage stream 1 chan address on the command line."
     print ""
@@ -279,6 +281,8 @@ if options.info:
     print "https://gist.github.com/anonymous/43c7d9690e57558b10e59720b29dc2d6"
     print ""
     print "Usage: $ python2 chanerator.py [passphrase]"
+    print ""
+    print "use -h flag for options."
     print ""
     print "LICENSE AGREEMENT:"
     print "By using this software you agree to hold the author harmless. This software is"
@@ -292,10 +296,9 @@ if options.logo:
     shield = """
 
     ┏┓┏┓┏━━┓┏━┓
-    ┗╋╋┛┃┏┓┃┃┏┛     (bitmessage) < BM-NBTqJ12baBSKxqdnQedyhFVUWborkho3 >
-    ┏╋╋┓┃┗┛┃┃┃           (email) < xor@danwin1210.me >
-    ┗┛┗┛┗━━┛┗┛         
-                          (c)2017, EXOR HASH COMSEC.
+    ┗╋╋┛┃┏┓┃┃┏┛         (bitmessage) < BM-5oQUrQbR4xu2rnBFGM2A6BLkJMfYvsw >
+    ┏╋╋┓┃┗┛┃┃┃          (email robot) < auto@eagle.icu >
+    ┗┛┗┛┗━━┛┗┛          { exor hash comsec }
                           
     """
     print shield
