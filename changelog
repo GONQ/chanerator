@@ -1,0 +1,18 @@
+2018.12.09
+
+Being away from GitHub a long time, I had forgotten about this.
+
+chanerator v0.0.1
+
+https://github.com/GONQ/chanerator
+
+The chanerator generates a bitmessage stream 1 chan address on the command line.
+
++ merged some improvements from a pull request
++ now generates statistics
++ now accepts multiple inputs
++ cleaned up the source
++ fluffed the source for readability
++ added SSSS license
++ choice of free software licenses
++ choose from BSD, MIT, Apache licenses
