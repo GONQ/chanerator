@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 '''
@@ -35,7 +35,7 @@ Updated with many improvements by GitHub user @bmng-dev.
 https://bitmessage.org/forum/index.php?topic=1727.0
 https://gist.github.com/anonymous/43c7d9690e57558b10e59720b29dc2d6
 
-Usage: $ python2 chanerator.py [passphrase]
+Usage: $ python3 chanerator.py [passphrase]
 
 Use is subject to license and indemnification of the author(s) from all claims.
 
@@ -84,7 +84,7 @@ class _OpenSSL:
 
         self._wrap('OBJ_sn2nid', ctypes.c_int, [ctypes.c_char_p])
 
-        NID_secp256k1 = self.OBJ_sn2nid('secp256k1')
+        NID_secp256k1 = self.OBJ_sn2nid(str.encode('secp256k1'))
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if not NID_secp256k1:
             raise Exception('OpenSSL library missing NID_secp256k1')
@@ -165,14 +165,14 @@ def encodeAddress(version, stream, ripe):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if 2 <= version < 4:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        if ripe[:2] == '\x00\x00':
+        if ripe[:2] == b'\x00\x00':
             ripe = ripe[2:]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-        elif ripe[:1] == '\x00':
+        elif ripe[:1] == b'\x00':
             ripe = ripe[1:]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     elif version == 4:
-        ripe = ripe.lstrip('\x00')
+        ripe = ripe.lstrip(b'\x00')
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
         if len(ripe) < 4:
             raise ValueError('ripe must not contain more than 16 leading NUL bytes')
@@ -204,7 +204,7 @@ def encodeBase58(data, alphabet=ALPHABET):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 def wiflify(key):
-    data = '\x80' + key
+    data = b'\x80' + key
     data += sha256(sha256(data).digest()).digest()[:4]
     return encodeBase58(data)
 
@@ -214,18 +214,19 @@ def chanerate(passphrases):
     iterations = 0
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     for passphrase in passphrases:
+        passphraseBytes = str.encode(passphrase)
         while True:
             nonce = 0
             try:
                 while True:
                     iterations += 1
-                    privSigningKey = sha512(passphrase + encodeVarint(nonce)).digest()[:32]
-                    privEncryptionKey = sha512(passphrase + encodeVarint(nonce + 1)).digest()[:32]
+                    privSigningKey = sha512(passphraseBytes + encodeVarint(nonce)).digest()[:32]
+                    privEncryptionKey = sha512(passphraseBytes + encodeVarint(nonce + 1)).digest()[:32]
                     pubSigningKey = OpenSSL.get_public_key(privSigningKey)
                     pubEncryptionKey = OpenSSL.get_public_key(privEncryptionKey)
                     ripe = hashlib.new('ripemd160', sha512(pubSigningKey + pubEncryptionKey).digest()).digest()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-                    if ripe[:1] == '\x00':
+                    if ripe[:1] == b'\x00':
                         try:
                             address = encodeAddress(4, 1, ripe)
                             break
@@ -235,29 +236,29 @@ def chanerate(passphrases):
                             pass
                     nonce += 2
             except ValueError:
-                print 'Exhausted all nonces trying to find an address for passphrase ' + passphrase
+                print('Exhausted all nonces trying to find an address for passphrase ' + passphrase)
                 break
 
-            print "[" + address + "]"
-            print "label = [chan] " + passphrase
-            print "enabled = true"
-            print "decoy = false"
-            print "chan = true"
-            print "noncetrialsperbyte = 1000"
-            print "payloadlengthextrabytes = 1000"
-            print "privsigningkey = " + wiflify(privSigningKey)
-            print "privencryptionkey = " + wiflify(privEncryptionKey)
-            print
+            print("[" + address + "]")
+            print("label = [chan] " + passphrase)
+            print("enabled = true")
+            print("decoy = false")
+            print("chan = true")
+            print("noncetrialsperbyte = 1000")
+            print("payloadlengthextrabytes = 1000")
+            print("privsigningkey = " + wiflify(privSigningKey))
+            print("privencryptionkey = " + wiflify(privEncryptionKey))
+            print()
             break
     stopTime = timer()
     duration = stopTime - startTime
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
     if not options.stats:
         return
-    print 'Duration:', timedelta(seconds=duration)
-    print 'Avg time per address:', timedelta(seconds=duration / len(passphrases))
-    print 'Iterations per second:', iterations / duration
-    print 'Avg iterations per address:', iterations / len(passphrases)
+    print('Duration:', timedelta(seconds = duration))
+    print('Avg time per address:', timedelta(seconds = duration / len(passphrases)))
+    print('Iterations per second:', iterations / duration)
+    print('Avg iterations per address:', iterations / len(passphrases))
 
 
 from optparse import OptionParser
@@ -283,27 +284,27 @@ parser.add_option("--openssl", dest="library",
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 if options.info:
-    print """
+    print("""
 ╋╋╋╋┏┓╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋┏┓
 ╋╋╋╋┃┃╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋╋┏┛┗┓
 ┏━━┓┃┗━┓┏━━┓┏━┓╋┏━━┓┏━┓┏━━┓┗┓┏┛┏━━┓┏━┓
 ┃┏━┛┃┏┓┃┃┏┓┃┃┏┓┓┃┃━┫┃┏┛┃┏┓┃╋┃┃╋┃┏┓┃┃┏┛
 ┃┗━┓┃┃┃┃┃┏┓┃┃┃┃┃┃┃━┫┃┃╋┃┏┓┃╋┃┗┓┃┗┛┃┃┃
 ┗━━┛┗┛┗┛┗┛┗┛┗┛┗┛┗━━┛┗┛╋┗┛┗┛╋┗━┛┗━━┛┗┛
-    """
-    print "chanerator v0.0.1"
-    print ""
-    print "Use subject to license."
-    print ""
-    print "contact / broadcast: (GONQ) < BM-5oQUrQbR4xu2rnBFGM2A6BLkJMfYvsw >"
-    print ""
-    print "Generates a bitmessage stream 1 chan address on the command line."
-    print ""
-    print "A bash alias to the script makes it useful for fast testing."
-    print ""
-    print "Usage: $ python2 chanerator.py [passphrase]"
-    print ""
-    print "use -h flag for options."
+    """)
+    print("chanerator v0.0.1")
+    print("")
+    print("Use subject to license.")
+    print("")
+    print("contact / broadcast: (GONQ) < BM-5oQUrQbR4xu2rnBFGM2A6BLkJMfYvsw >")
+    print("")
+    print("Generates a bitmessage stream 1 chan address on the command line.")
+    print("")
+    print("A bash alias to the script makes it useful for fast testing.")
+    print("")
+    print("Usage: $ python3 chanerator.py [passphrase]")
+    print("")
+    print("use -h flag for options.")
 
     sys.exit()
     
@@ -317,7 +318,7 @@ if options.logo:
     ┗┛┗┛┗━━┛┗┛          { exor hash comsec }
                           
     """
-    print shield
+    print(shield)
     sys.exit()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
